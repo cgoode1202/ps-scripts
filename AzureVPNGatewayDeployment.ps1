@@ -62,3 +62,60 @@ New-SelfSignedCertificate -Type Custom -DnsName P2SChildCert -KeySpec Signature 
 -HashAlgorithm sha256 -KeyLength 2048 `
 -CertStoreLocation "Cert:\CurrentUser\My" `
 -Signer $cert -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.2")
+
+<# With our certificates generated, we need to export our root certificate's public key.
+Run certmgr from PowerShell to open the Certificate Manager.
+Go to Personal > Certificates.
+Right-click the P2SRootCert certificate in the list, and select All tasks > Export.
+In the Certificate Export Wizard, select Next.
+Ensure that No, do not export the private key is selected, and then select Next.
+On the Export File Format page, ensure that Base-64 encoded X.509 (.CER) is selected, and then select Next.
+In the File to Export page, under File name, navigate to a location you'll remember, 
+    and save the file as P2SRootCert.cer, and then select Next.
+On the Completing the Certificate Export Wizard page, select Finish.
+On the Certificate Export Wizard message box, select OK. #>
+
+# Declare a variable for the certificate name
+$P2SRootCertName = "P2SRootCert.cer"
+
+# Replace the <cert-path> placeholder with the export location of your root certificate, and run the following command
+$filePathForCert = "<cert-path>\P2SRootCert.cer"
+$cert = new-object System.Security.Cryptography.X509Certificates.X509Certificate2($filePathForCert)
+$CertBase64 = [system.convert]::ToBase64String($cert.RawData)
+$p2srootcert = New-AzVpnClientRootCertificate -Name $P2SRootCertName -PublicCertData $CertBase64
+
+# Upload the certificate to Azure
+Add-AzVpnClientRootCertificate `
+-VpnClientRootCertificateName $P2SRootCertName `
+-VirtualNetworkGatewayname $GWName `
+-ResourceGroupName $ResourceGroup `
+-PublicCertData $CertBase64
+
+# Create VPN client configuration files in .ZIP format
+$profile = New-AzVpnClientConfiguration -ResourceGroupName $ResourceGroup -Name $GWName -AuthenticationMethod "EapTls"
+$profile.VPNProfileSASUrl
+
+<# Copy the URL returned in the output from this command, and paste it into your browser. Your browser should start 
+    downloading a .ZIP file. Extract the archive contents and put them in a suitable location.
+Some browsers will initially attempt to block downloading this ZIP file as a dangerous download. You will need to 
+    override this in your browser to be able to extract the archive contents.
+In the extracted folder, navigate to either the WindowsAmd64 folder (for 64-bit Windows computers) or the 
+    WindowsX86 folder (for 32-bit computers).
+If you want to configure a VPN on a non-Windows machine, you can use the certificate and settings files from the Generic folder.
+Double-click the VpnClientSetup{architecture}.exe file, with {architecture} reflecting your architecture.
+In the Windows protected your PC screen, select More info, and then select Run anyway.
+In the User Account Control dialog box, select Yes.
+In the VNetData dialog box, select Yes. #>
+
+<# Press the Windows key, enter Settings, and press kbd>Enter.
+In the Settings window, select Network and Internet.
+In the left-hand pane, select VPN.
+In the right-hand pane, select VNetData, and then select Connect.
+In the VNetData window, select Connect.
+In the next VNetData window, select Continue.
+In the User Account Control message box, select Yes. #>
+
+<# In a new Windows command prompt, run IPCONFIG /ALL.
+Copy the IP address under PPP adapter VNetData, or write it down.
+Confirm that IP address is in the VPNClientAddressPool range of 172.16.201.0/24.
+You have successfully made a connection to the Azure VPN gateway. #>
