@@ -14,4 +14,5 @@ $adminCredential = Get-Credential -Message "Enter a username and password for th
 # Create a virtual machine in Azure.
 New-AzVm -ResourceGroupName $resourceGroup -Name $vmName -Credential $adminCredential -Image UbuntuLTS
 
-# Here is a new line to push test commit on Github
+# Create a new file in current folder
+New-Item test.txt
