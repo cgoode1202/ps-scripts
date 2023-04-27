@@ -119,3 +119,10 @@ In the User Account Control message box, select Yes. #>
 Copy the IP address under PPP adapter VNetData, or write it down.
 Confirm that IP address is in the VPNClientAddressPool range of 172.16.201.0/24.
 You have successfully made a connection to the Azure VPN gateway. #>
+
+# Cleanup
+# Delete the resource group vm-networks and the resources it contains
+Remove-AzResourceGroup -Name vm-networks
+
+# Delete the resource group VpnGatewayDemo and the resources it contains
+Remove-AzResourceGroup -Name VpnGatewayDemo

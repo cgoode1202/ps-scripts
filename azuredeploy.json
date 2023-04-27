@@ -10,7 +10,7 @@
                 "description": "The name of the Azure storage resource"
             }
         },
-    //  These are the allowed values for an Azure storage account
+        // These are the allowed values for an Azure storage account
         "storageSKU": {
             "type": "string",
             "defaultValue": "Standard_LRS",
@@ -38,7 +38,8 @@
         "location": "[resourceGroup().location]",
         "kind": "StorageV2",
         "sku": {
-            "name": "[parameters('storageSKU')]"
+            "name": "[parameters('storageSKU')]",
+            "tier": "Standard"
         }
     }],
     "outputs": {

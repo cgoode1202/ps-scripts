@@ -16,3 +16,9 @@ New-AzVm -ResourceGroupName $resourceGroup -Name $vmName -Credential $adminCrede
 
 # Create a new file in current folder
 New-Item test.txt
+
+# add content to text file
+Set-Content test.txt 'here is some sample text'
+
+# Read content of file
+get-Content test.txt
