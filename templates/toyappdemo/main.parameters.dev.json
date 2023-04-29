@@ -1,0 +1,34 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "appServicePlanSku": {
+        "value": {
+          "name": "F1",
+          "tier": "Free"
+        }
+      },
+      "sqlDatabaseSku": {
+        "value": {
+          "name": "Standard",
+          "tier": "Standard"
+        }
+      },
+      "sqlServerAdministratorLogin": {
+        "reference": {
+            "keyVault": {
+                "id": "/subscriptions/5ff93aeb-0e84-4e9a-8ed5-c9266ad37560/resourceGroups/learn-f5406328-c346-40f6-84bc-b4f73d3ad7eb/providers/Microsoft.KeyVault/vaults/toy-app-demo-vault"
+            },
+            "secretName": "sqlServerAdministratorLogin"
+        }
+      },
+      "sqlServerAdministratorPassword": {
+        "reference": {
+            "keyVault": {
+                "id": "/subscriptions/5ff93aeb-0e84-4e9a-8ed5-c9266ad37560/resourceGroups/learn-f5406328-c346-40f6-84bc-b4f73d3ad7eb/providers/Microsoft.KeyVault/vaults/toy-app-demo-vault"
+            },
+            "secretName": "sqlServerAdministratorPassword"
+        }
+      }
+    }
+  }
