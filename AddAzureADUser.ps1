@@ -35,3 +35,8 @@ Add-AzureADGroupOwner -ObjectId "<Group Object Id" -RefObjectId "User Object Id"
 
 # List details of a role
 Get-AzRoleDefinition -Name '<roleName>'
+
+# Sync on-prem AD updates with Azure AD
+Import-Module -Name 'C:\Program Files\Microsoft Azure AD Sync\Bin\ADSync\ADSync.psd1'
+
+Start-ADSyncSyncCycle -PolicyType Delta
