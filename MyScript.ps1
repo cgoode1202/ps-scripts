@@ -7,7 +7,7 @@ Connect-AzAccount
 # Create a resource group
 New-AzResourceGroup -Location 'location' -Name 'name'
 
-# Retrivew list of resource groups
+# Retrive list of resource groups
 Get-AzResourceGroup
 
 # Define Azure variables for a virtual machine.
