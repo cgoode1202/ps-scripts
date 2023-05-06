@@ -4,6 +4,9 @@ $location = "westus"
 $storageName = "staticwebsitedemo678972"
 $storageSku = "Standard_GRS"
 $customDomain = "<custom-name-here>"
+$cdnProfileName = "demo-domain-cdn"
+$cdnSku = "Standard_Microsoft"
+$endpointName = "demo-endpoint-name"
 
 # Create a resource group
 New-AzResourceGroup -Name $ResourceGroupName -location $location
@@ -30,3 +33,16 @@ Write-Output $storageAccount.PrimaryEndpoints.Web
 
 # Register your customer domain with Azure
 Set-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageName -CustomDomainName $customDomain -UseSubDomain $false
+
+# Create a CDN
+New-AzCdnProfile -Name $cdnProfileName -ResourceGroupName $resourceGroupName -Location 'westus' -SkuName $cdnsku
+
+# Create an endpoint
+New-AzCdnEndpoint -EndpointName $endpointName -ProfileName $cdnProfileName -ResourceGroupName $ResourceGroupName -Location $location -Origin $origin -IsHttpsAllowed
+
+# See Endpoint details
+Get-AzCdnEndpoint -Name $endpointName -ProfileName $cdnProfileName -ResourceGroupName $resourceGroupName
+
+# Get domain url
+(Get-AzCdnEndpoint -Name $endpointName -ProfileName $cdnProfileName -ResourceGroupName $resourceGroupName|select HostName).HostName
+
