@@ -3,6 +3,7 @@ $resourceGroupName = "static-website-rg"
 $location = "westus"
 $storageName = "staticwebsitedemo678972"
 $storageSku = "Standard_GRS"
+$customDomain = "<custom-name-here>"
 
 # Create a resource group
 New-AzResourceGroup -Name $ResourceGroupName -location $location
@@ -26,3 +27,6 @@ set-AzStorageblobcontent -File "index.html" -Container `$web -Blob "index.html" 
 # Use these commands to get the public URL
 $storageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageName
 Write-Output $storageAccount.PrimaryEndpoints.Web
+
+# Register your customer domain with Azure
+Set-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageName -CustomDomainName $customDomain -UseSubDomain $false
