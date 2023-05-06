@@ -24,20 +24,27 @@ $ctx = $storageAccount.Context
 Enable-AzStorageStaticWebsite -IndexDocument "index.html" -ErrorDocument404Path "index.html"
 
 # Upload a file making sure to set the content type to text/html
-set-AzStorageblobcontent -File "index.html" -Container `$web -Blob "index.html" -Context $ctx -Properties @{ ContentType = "text/html; charset=utf-8";}
+Set-AzStorageblobcontent -File "index.html" -Container `$web -Blob "index.html" -Context $ctx -Properties @{ ContentType = "text/html; charset=utf-8";}
 
 # Now you have a static website up and running on Azure!
 # Use these commands to get the public URL
+$webUrl = (Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageName|select PrimaryEndpoints).PrimaryEndpoints.Web
+$webUrl = $webUrl.replace("https://", "")
+$webUrl = $webUrl.replace("/", "")
 $storageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageName
 Write-Output $storageAccount.PrimaryEndpoints.Web
 
-# Register your customer domain with Azure
+# Register your custom domain with Azure
 Set-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageName -CustomDomainName $customDomain -UseSubDomain $false
 
-# Create a CDN
+# Create a CDN profile
 New-AzCdnProfile -Name $cdnProfileName -ResourceGroupName $resourceGroupName -Location 'westus' -SkuName $cdnsku
 
 # Create an endpoint
+$origin = @{
+	Name = "websiteorigin"
+	HostName = $webUrl
+}
 New-AzCdnEndpoint -EndpointName $endpointName -ProfileName $cdnProfileName -ResourceGroupName $ResourceGroupName -Location $location -Origin $origin -IsHttpsAllowed
 
 # See Endpoint details
@@ -46,3 +53,8 @@ Get-AzCdnEndpoint -Name $endpointName -ProfileName $cdnProfileName -ResourceGrou
 # Get domain url
 (Get-AzCdnEndpoint -Name $endpointName -ProfileName $cdnProfileName -ResourceGroupName $resourceGroupName|select HostName).HostName
 
+# Add a custom domain (cdnverify cname must be created prior to running this)
+New-AzCdnCustomDomain -EndpointName $endpointName -HostName $customDomain -CustomDomainName $customDomain -ProfileName $cdnProfileName -ResourceGroupName $resourceGroupName
+
+# Enable HTTPS
+Enable-AzCdnCustomDomainHttps -EndpointName $endpointName -CustomDomainName $customDomain -ProfileName $cdnProfileName -ResourceGroupName $resourceGroupName
