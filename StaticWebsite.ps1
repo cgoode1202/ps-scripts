@@ -6,7 +6,7 @@ $storageSku = "Standard_GRS"
 $customDomain = "<custom-name-here>"
 $cdnProfileName = "demo-domain-cdn"
 $cdnSku = "Standard_Microsoft"
-$endpointName = "demo-endpoint-name"
+$endpointName = "demo-endpoint972678"
 
 # Create a resource group
 New-AzResourceGroup -Name $ResourceGroupName -location $location
@@ -42,7 +42,7 @@ New-AzCdnProfile -Name $cdnProfileName -ResourceGroupName $resourceGroupName -Lo
 
 # Create an endpoint
 $origin = @{
-	Name = "websiteorigin"
+	Name = "demo-endpoint-name"
 	HostName = $webUrl
 }
 New-AzCdnEndpoint -EndpointName $endpointName -ProfileName $cdnProfileName -ResourceGroupName $ResourceGroupName -Location $location -Origin $origin -IsHttpsAllowed
