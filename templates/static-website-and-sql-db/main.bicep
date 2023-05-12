@@ -1,3 +1,4 @@
+@description('The location into which your Azure resources should be deployed.')
 param location string = resourceGroup().location
 
 @allowed([
@@ -18,20 +19,25 @@ param hostingPlanSkuName string = 'F1'
 
 @minValue(1)
 param skuCapacity int = 1
+
+@description('The administrator login username for the SQL server.')
 param sqlAdministratorLogin string
 
+@description('The administrator login password for the SQL server.')
 @secure()
 param sqlAdministratorLoginPassword string
 
-param managedIdentityName string = 'identity1'
+param managedIdentityName string = 'WebSite'
 
-@description('This is Contributor role definition Id')
-param roleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+@description('This is role definition ID of the built-in Azure \'Contributor\' role.')
+param contributorRoleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+param storageAccountConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
 
 param webSiteName string = 'webSite${uniqueString(resourceGroup().id)}'
 param container1Name string = 'productspecs'
 param productManualsName string = 'productmanuals'
 
+// Define the names for resources
 var hostingPlanName = 'hostingplan${uniqueString(resourceGroup().id)}'
 var sqlServerName = 'toywebsite${uniqueString(resourceGroup().id)}'
 var storageAccountName = 'toywebsite${uniqueString(resourceGroup().id)}'
@@ -113,11 +119,11 @@ resource webSite 'Microsoft.Web/sites@2020-06-01' = {
       appSettings: [
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: AppInsights_webSiteName.properties.InstrumentationKey
+          value: applicationInsights.properties.InstrumentationKey
         }
         {
           name: 'StorageAccountConnectionString'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
+          value: storageAccountConnectionString
         }
       ]
     }
@@ -125,27 +131,30 @@ resource webSite 'Microsoft.Web/sites@2020-06-01' = {
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${msi.id}': {}
+      '${managedIdentity.id}': {}
     }
   }
 }
 
-resource msi 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+@description('A user-assigned managed identity that is used by the App Service app to communicate with a storage account.')
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: managedIdentityName
   location: location
 }
 
-resource roleassignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(roleDefinitionId, resourceGroup().id)
+@description('Grant the Contributor role to the user-assigned managed identity, at the scope of the resource group.')
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(contributorRoleDefinitionId, resourceGroup().id)
 
   properties: {
     principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
-    principalId: msi.properties.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleDefinitionId)
+    principalId: managedIdentity.properties.principalId
+    description: 'Grant the "Contributor role to the user-assigned managed identity so it can access the storage account.'
   }
 }
 
-resource AppInsights_webSiteName 'Microsoft.Insights/components@2018-05-01-preview' = {
+resource applicationInsights 'Microsoft.Insights/components@2018-05-01-preview' = {
   name: 'AppInsights'
   location: location
   kind: 'web'
