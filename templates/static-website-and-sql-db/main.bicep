@@ -14,7 +14,7 @@ param location string = resourceGroup().location
   'P3'
   'P4'
 ])
-param skuName string = 'F1'
+param hostingPlanSkuName string = 'F1'
 
 @minValue(1)
 param skuCapacity int = 1
@@ -23,15 +23,19 @@ param sqlAdministratorLogin string
 @secure()
 param sqlAdministratorLoginPassword string
 
-param managedIdentityName string
+param managedIdentityName string = 'identity1'
+
+@description('This is Contributor role definition Id')
 param roleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+
 param webSiteName string = 'webSite${uniqueString(resourceGroup().id)}'
 param container1Name string = 'productspecs'
-param productmanualsName string = 'productmanuals'
+param productManualsName string = 'productmanuals'
 
 var hostingPlanName = 'hostingplan${uniqueString(resourceGroup().id)}'
-var sqlserverName = 'toywebsite${uniqueString(resourceGroup().id)}'
+var sqlServerName = 'toywebsite${uniqueString(resourceGroup().id)}'
 var storageAccountName = 'toywebsite${uniqueString(resourceGroup().id)}'
+var databaseName = 'ToyCompanyWebsite'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: storageAccountName
@@ -54,8 +58,8 @@ resource container1 'Microsoft.Storage/storageAccounts/blobServices/containers@2
   name: container1Name
 }
 
-resource sqlserver 'Microsoft.Sql/servers@2019-06-01-preview' = {
-  name: sqlserverName
+resource sqlServer 'Microsoft.Sql/servers@2019-06-01-preview' = {
+  name: sqlServerName
   location: location
   properties: {
     administratorLogin: sqlAdministratorLogin
@@ -64,9 +68,9 @@ resource sqlserver 'Microsoft.Sql/servers@2019-06-01-preview' = {
   }
 }
 
-var databaseName = 'ToyCompanyWebsite'
-resource sqlserverName_databaseName 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
-  name: '${sqlserver.name}/${databaseName}'
+
+resource sqlServerName_databaseName 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
+  name: '${sqlServer.name}/${databaseName}'
   location: location
   sku: {
     name: 'Basic'
@@ -78,24 +82,24 @@ resource sqlserverName_databaseName 'Microsoft.Sql/servers/databases@2020-08-01-
 }
 
 resource sqlserverName_AllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@2014-04-01' = {
-  name: '${sqlserver.name}/AllowAllAzureIPs'
+  name: '${sqlServer.name}/AllowAllAzureIPs'
   properties: {
     endIpAddress: '0.0.0.0'
     startIpAddress: '0.0.0.0'
   }
   dependsOn: [
-    sqlserver
+    sqlServer
   ]
 }
 
 resource productmanuals 'Microsoft.Storage/storageAccounts/blobServices/containers@2019-06-01' = {
-  name: '${storageAccount.name}/default/${productmanualsName}'
+  name: '${storageAccount.name}/default/${productManualsName}'
 }
 resource hostingPlan 'Microsoft.Web/serverfarms@2020-06-01' = {
   name: hostingPlanName
   location: location
   sku: {
-    name: skuName
+    name: hostingPlanSkuName
     capacity: skuCapacity
   }
 }
@@ -125,17 +129,6 @@ resource webSite 'Microsoft.Web/sites@2020-06-01' = {
     }
   }
 }
-
-// We don't need this anymore. We use a managed identity to access the database instead.
-//resource webSiteConnectionStrings 'Microsoft.Web/sites/config@2020-06-01' = {
-//  name: '${webSite.name}/connectionstrings'
-//  properties: {
-//    DefaultConnection: {
-//      value: 'Data Source=tcp:${sqlserver.properties.fullyQualifiedDomainName},1433;Initial Catalog=${databaseName};User Id=${sqlAdministratorLogin}@${sqlserver.properties.fullyQualifiedDomainName};Password=${sqlAdministratorLoginPassword};'
-//      type: 'SQLAzure'
-//    }
-//  }
-//}
 
 resource msi 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: managedIdentityName
