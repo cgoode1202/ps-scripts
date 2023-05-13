@@ -1,21 +1,14 @@
 @description('The location into which your Azure resources should be deployed.')
 param location string = resourceGroup().location
 
+@description('Select the type of environment you want to provision. Allowed values and Production and Test.')
 @allowed([
-  'F1'
-  'D1'
-  'B1'
-  'B2'
-  'B3'
-  'S1'
-  'S2'
-  'S3'
-  'P1'
-  'P2'
-  'P3'
-  'P4'
+  'Production'
+  'Test'
 ])
-param hostingPlanSkuName string = 'F1'
+param environmentType string
+
+param resourceNameSuffix string = uniqueString(resourceGroup().id)
 
 @minValue(1)
 param skuCapacity int = 1
@@ -23,24 +16,67 @@ param skuCapacity int = 1
 @description('The administrator login username for the SQL server.')
 param sqlAdministratorLogin string
 
-@description('The administrator login password for the SQL server.')
 @secure()
+@description('The administrator login password for the SQL server.')
 param sqlAdministratorLoginPassword string
-
-param managedIdentityName string = 'WebSite'
 
 @description('This is role definition ID of the built-in Azure \'Contributor\' role.')
 param contributorRoleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+
 param storageAccountConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
 param container1Name string = 'productspecs'
 param productManualsName string = 'productmanuals'
 
+
 // Define the names for resources
-param appServiceAppName string = 'webSite${uniqueString(resourceGroup().id)}'
+var appServiceAppName = 'webSite${resourceNameSuffix}'
 var appServicePlanName = 'AppServicePlan'
-var sqlServerName = 'toywebsite${uniqueString(resourceGroup().id)}'
-var storageAccountName = 'toywebsite${uniqueString(resourceGroup().id)}'
+var sqlServerName = 'sqlserver${resourceNameSuffix}'
 var sqlDatabaseName = 'ToyCompanyWebsite'
+var storageAccountName = 'toywebsite${resourceNameSuffix}'
+var managedIdentityName = 'WebSite'
+var applicationInsightsName = 'AppInsights'
+
+@description('Define the SKUs for each component based on the environment type.')
+var environmentConfigurationMap = {
+  Production: {
+    appServicePlan: {
+      sku: {
+        name: 'S1'
+        capacity: 2
+      }
+    }
+    storageAccount: {
+      sku: {
+        name: 'Standard_GRS'
+      }
+    }
+    sqlDatabase: {
+      sku: {
+        name: 'S1'
+        tier: 'Standard'
+      }
+    }
+  }
+  Test: {
+    appServicePlan: {
+      sku: {
+        name: 'F1'
+        capacity: 1
+      }
+    }
+    storageAccount: {
+      sku: {
+        name: 'Standard_LRS'
+      }
+    }
+    sqlDatabase: {
+      sku: {
+        name: 'Basic'
+      }
+    }
+  }
+}
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: storageAccountName
