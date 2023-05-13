@@ -32,20 +32,19 @@ param managedIdentityName string = 'WebSite'
 @description('This is role definition ID of the built-in Azure \'Contributor\' role.')
 param contributorRoleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 param storageAccountConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
-
-param webSiteName string = 'webSite${uniqueString(resourceGroup().id)}'
 param container1Name string = 'productspecs'
 param productManualsName string = 'productmanuals'
 
 // Define the names for resources
-var hostingPlanName = 'hostingplan${uniqueString(resourceGroup().id)}'
+param appServiceAppName string = 'webSite${uniqueString(resourceGroup().id)}'
+var appServicePlanName = 'AppServicePlan'
 var sqlServerName = 'toywebsite${uniqueString(resourceGroup().id)}'
 var storageAccountName = 'toywebsite${uniqueString(resourceGroup().id)}'
-var databaseName = 'ToyCompanyWebsite'
+var sqlDatabaseName = 'ToyCompanyWebsite'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: storageAccountName
-  location: 'eastus'
+  location: location
   sku: {
     name: 'Standard_LRS'
   }
@@ -75,8 +74,9 @@ resource sqlServer 'Microsoft.Sql/servers@2019-06-01-preview' = {
 }
 
 
-resource sqlServerName_databaseName 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
-  name: '${sqlServer.name}/${databaseName}'
+resource sqlDatabase 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
+  parent: sqlServer
+  name: sqlDatabaseName
   location: location
   sku: {
     name: 'Basic'
@@ -87,22 +87,20 @@ resource sqlServerName_databaseName 'Microsoft.Sql/servers/databases@2020-08-01-
   }
 }
 
-resource sqlserverName_AllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@2014-04-01' = {
-  name: '${sqlServer.name}/AllowAllAzureIPs'
+resource sqlFirewallRuleAllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@2014-04-01' = {
+  parent: sqlServer
+  name: 'AllowAllAzureIPs'
   properties: {
     endIpAddress: '0.0.0.0'
     startIpAddress: '0.0.0.0'
   }
-  dependsOn: [
-    sqlServer
-  ]
 }
 
 resource productmanuals 'Microsoft.Storage/storageAccounts/blobServices/containers@2019-06-01' = {
   name: '${storageAccount.name}/default/${productManualsName}'
 }
-resource hostingPlan 'Microsoft.Web/serverfarms@2020-06-01' = {
-  name: hostingPlanName
+resource appServicePlan 'Microsoft.Web/serverfarms@2020-06-01' = {
+  name: appServiceAppName
   location: location
   sku: {
     name: hostingPlanSkuName
@@ -110,11 +108,11 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2020-06-01' = {
   }
 }
 
-resource webSite 'Microsoft.Web/sites@2020-06-01' = {
-  name: webSiteName
+resource appServiceApp 'Microsoft.Web/sites@2020-06-01' = {
+  name: appServiceAppName
   location: location
   properties: {
-    serverFarmId: hostingPlan.id
+    serverFarmId: appServicePlanName.id
     siteConfig: {
       appSettings: [
         {
@@ -131,7 +129,7 @@ resource webSite 'Microsoft.Web/sites@2020-06-01' = {
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${managedIdentity.id}': {}
+      '${managedIdentity.id}': {} // This format is required when working with managed identities.
     }
   }
 }
