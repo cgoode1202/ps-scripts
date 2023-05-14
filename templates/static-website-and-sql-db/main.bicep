@@ -8,10 +8,9 @@ param location string = resourceGroup().location
 ])
 param environmentType string
 
+@description('A unique suffix to add to resource names that n eed to be globally unique.')
+@maxLength(13)
 param resourceNameSuffix string = uniqueString(resourceGroup().id)
-
-@minValue(1)
-param skuCapacity int = 1
 
 @description('The administrator login username for the SQL server.')
 param sqlAdministratorLogin string
@@ -20,10 +19,6 @@ param sqlAdministratorLogin string
 @description('The administrator login password for the SQL server.')
 param sqlAdministratorLoginPassword string
 
-@description('This is role definition ID of the built-in Azure \'Contributor\' role.')
-param contributorRoleDefinitionId string = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
-
-param storageAccountConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
 param container1Name string = 'productspecs'
 param productManualsName string = 'productmanuals'
 
@@ -36,6 +31,10 @@ var sqlDatabaseName = 'ToyCompanyWebsite'
 var storageAccountName = 'toywebsite${resourceNameSuffix}'
 var managedIdentityName = 'WebSite'
 var applicationInsightsName = 'AppInsights'
+var blobContainerNames = [
+  'productspecs'
+  'productmanuals'
+]
 
 @description('Define the SKUs for each component based on the environment type.')
 var environmentConfigurationMap = {
@@ -78,12 +77,14 @@ var environmentConfigurationMap = {
   }
 }
 
+@description('This is role definition ID of the built-in Azure \'Contributor\' role.')
+var contributorRoleDefinitionId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+var storageAccountConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: storageAccountName
   location: location
-  sku: {
-    name: 'Standard_LRS'
-  }
+  sku: environmentConfigurationMap[environmentType].storageAccount.sku
   kind: 'StorageV2'
   properties: {
     accessTier: 'Hot'
@@ -91,12 +92,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
 
   resource blobServices 'blobServices' existing = {
     name: 'default'
-  }
-}
 
-resource container1 'Microsoft.Storage/storageAccounts/blobServices/containers@2019-06-01' = {
-  parent: storageAccount::blobServices
-  name: container1Name
+    resource containers 'containers' = [for blobContainerName in blobContainerNames: {
+      name: blobContainerName
+    }]
+  }
 }
 
 resource sqlServer 'Microsoft.Sql/servers@2019-06-01-preview' = {
@@ -108,7 +108,6 @@ resource sqlServer 'Microsoft.Sql/servers@2019-06-01-preview' = {
     version: '12.0'
   }
 }
-
 
 resource sqlDatabase 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
   parent: sqlServer
@@ -132,23 +131,17 @@ resource sqlFirewallRuleAllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@20
   }
 }
 
-resource productmanuals 'Microsoft.Storage/storageAccounts/blobServices/containers@2019-06-01' = {
-  name: '${storageAccount.name}/default/${productManualsName}'
-}
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-06-01' = {
   name: appServiceAppName
   location: location
-  sku: {
-    name: hostingPlanSkuName
-    capacity: skuCapacity
-  }
+  sku: environmentConfigurationMap[environmentType].appServicePlan.sku
 }
 
 resource appServiceApp 'Microsoft.Web/sites@2020-06-01' = {
   name: appServiceAppName
   location: location
   properties: {
-    serverFarmId: appServicePlanName.id
+    serverFarmId: appServicePlan.id
     siteConfig: {
       appSettings: [
         {
