@@ -19,9 +19,13 @@ param sqlAdministratorLogin string
 @description('The administrator login password for the SQL server.')
 param sqlAdministratorLoginPassword string
 
-param container1Name string = 'productspecs'
-param productManualsName string = 'productmanuals'
-
+@description('The tags to apply to each resource.')
+param tags object = {
+  CostCenter: 'Marketing'
+  DataClassification: 'Public'
+  Owner: 'WebsiteTeam'
+  Environment: 'Production'
+}
 
 // Define the names for resources
 var appServiceAppName = 'webSite${resourceNameSuffix}'
@@ -81,27 +85,10 @@ var environmentConfigurationMap = {
 var contributorRoleDefinitionId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 var storageAccountConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
-  name: storageAccountName
-  location: location
-  sku: environmentConfigurationMap[environmentType].storageAccount.sku
-  kind: 'StorageV2'
-  properties: {
-    accessTier: 'Hot'
-  }
-
-  resource blobServices 'blobServices' existing = {
-    name: 'default'
-
-    resource containers 'containers' = [for blobContainerName in blobContainerNames: {
-      name: blobContainerName
-    }]
-  }
-}
-
 resource sqlServer 'Microsoft.Sql/servers@2019-06-01-preview' = {
   name: sqlServerName
   location: location
+  tags: tags
   properties: {
     administratorLogin: sqlAdministratorLogin
     administratorLoginPassword: sqlAdministratorLoginPassword
@@ -113,13 +100,8 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
   parent: sqlServer
   name: sqlDatabaseName
   location: location
-  sku: {
-    name: 'Basic'
-  }
-  properties: {
-    collation: 'SQL_Latin1_General_CP1_CI_AS'
-    maxSizeBytes: 1073741824
-  }
+  sku: environmentConfigurationMap[environmentType].sqlDatabase.sku
+  tags: tags
 }
 
 resource sqlFirewallRuleAllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@2014-04-01' = {
@@ -132,14 +114,16 @@ resource sqlFirewallRuleAllowAllAzureIPs 'Microsoft.Sql/servers/firewallRules@20
 }
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2020-06-01' = {
-  name: appServiceAppName
+  name: appServicePlanName
   location: location
   sku: environmentConfigurationMap[environmentType].appServicePlan.sku
+  tags: tags
 }
 
 resource appServiceApp 'Microsoft.Web/sites@2020-06-01' = {
   name: appServiceAppName
   location: location
+  tags: tags
   properties: {
     serverFarmId: appServicePlan.id
     siteConfig: {
@@ -163,16 +147,34 @@ resource appServiceApp 'Microsoft.Web/sites@2020-06-01' = {
   }
 }
 
+resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
+  name: storageAccountName
+  location: location
+  sku: environmentConfigurationMap[environmentType].storageAccount.sku
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+  }
+
+  resource blobServices 'blobServices' existing = {
+    name: 'default'
+
+    resource containers 'containers' = [for blobContainerName in blobContainerNames: {
+      name: blobContainerName
+    }]
+  }
+}
+
 @description('A user-assigned managed identity that is used by the App Service app to communicate with a storage account.')
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: managedIdentityName
   location: location
+  tags: tags
 }
 
 @description('Grant the Contributor role to the user-assigned managed identity, at the scope of the resource group.')
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(contributorRoleDefinitionId, resourceGroup().id)
-
+  name: guid(contributorRoleDefinitionId, resourceGroup().id) // Create a GUID based on the role definition ID and scope (resource group ID). This will return the same GUID every time the template is deployed to the same resource group.
   properties: {
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleDefinitionId)
@@ -182,9 +184,10 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
 }
 
 resource applicationInsights 'Microsoft.Insights/components@2018-05-01-preview' = {
-  name: 'AppInsights'
+  name: applicationInsightsName
   location: location
   kind: 'web'
+  tags: tags
   properties: {
     Application_Type: 'web'
   }
