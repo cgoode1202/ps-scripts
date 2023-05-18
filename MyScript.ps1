@@ -44,3 +44,9 @@ Remove-AzResourceLock -LockName $lockName -ResourceName $storageAccountName  -Re
 
 # Check if you are able to create VMs in a given region
 az vm list-skus --location 'region' -o table --query "[? contains(name,'Standard_D2s')].name"
+
+# Start a VM
+Start-AzVM -ResourceGroupName "resourceGroupName" -Name "vmName"
+
+# Stop a VM
+Stop-AzVM -ResourceGroupName "resourceGroupName" -Name "vmName"
